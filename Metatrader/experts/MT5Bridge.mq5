@@ -7,8 +7,8 @@
 #property version   "1.00"
 #property strict
 
-input string BridgeHost     = "bridge"; // Bridge server hostname (Docker service name)
-input int    BridgePort     = 9000;     // Bridge server TCP port
+input string BridgeHost     = "172.28.0.10"; // Bridge container static IP (set in docker-compose.yaml)
+input int    BridgePort     = 9000;          // Bridge server TCP port
 input int    TimerIntervalMs = 50;      // Polling interval (ms)
 
 int    gSocket    = INVALID_HANDLE;

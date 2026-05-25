@@ -7,30 +7,36 @@ A C++ (Drogon) REST API that bridges MetaTrader 5 to external systems via a MQL5
 ## Architecture
 
 ```
-External Client
-      │
-      │  HTTP :8080
-      ▼
-┌─────────────────┐        TCP :9000
-│  C++ Drogon     │◄──────────────────┐
-│  bridge         │                   │
-│  (container)    │                   │
-└─────────────────┘        ┌──────────┴────────────┐
-                            │  MQL5 EA (MT5Bridge)  │
-                            │  inside MT5 / Wine    │
-                            │  (mt5 container)      │
-                            └───────────────────────┘
+                            host
+                       127.0.0.1:18080
+External Client ─────────────┐
+                             │  HTTP
+                             ▼
+              ┌──────────────────────────────┐
+              │  mt5_bridge  (172.28.0.10)   │
+              │  C++ Drogon REST API :8080   │
+              │  + TCP listener :9000        │
+              └──────────────▲───────────────┘
+                             │  TCP (Docker network mt5_net)
+                             │  EA dials out to 172.28.0.10:9000
+              ┌──────────────┴───────────────┐
+              │  mt5          (172.28.0.20)  │
+              │  MetaTrader 5 in Wine        │
+              │  MQL5 EA: MT5Bridge.mq5      │
+              └──────────────────────────────┘
 ```
 
-The EA connects **out** to the bridge — no inbound port is needed on the MT5 container.
+The EA connects **out** to the bridge — no inbound port is needed on the MT5 container. Both containers sit on the static `mt5_net` network (`172.28.0.0/24`) so the bridge IP is stable across restarts and can be added to MT5's WebRequest allowlist.
 
 ---
 
 ## Base URL
 
 ```
-http://localhost:8080
+http://localhost:18080
 ```
+
+The bridge container exposes port `8080` internally; `docker-compose.yaml` publishes it on the host as `127.0.0.1:18080`.
 
 ---
 
@@ -472,27 +478,40 @@ docker compose logs -f
 
 ---
 
-### 3. Install and configure the EA
+### 3. Allow the bridge URL inside MT5 *(one-time, required)*
+
+MT5 blocks `SocketConnect()` to any address that is not in the **Allow WebRequest for listed URL** allowlist (since build 1881). Without this step the EA loads but the connection silently fails.
 
 1. Open MT5 in your browser at `http://localhost:3000`
-2. In the MT5 terminal go to **File → Open Data Folder → MQL5 → Experts → MT5Bridge**
-   - The `MT5Bridge.mq5` file is already mounted there via the volume
-3. In MetaEditor, open `MT5Bridge.mq5` and press **F7** to compile
-4. Back in the MT5 terminal, open any chart (e.g. EURUSD, M1)
-5. Drag **MT5Bridge** from the Navigator panel onto the chart
-6. In the EA settings dialog set:
-   - `BridgeHost` = `bridge` *(Docker service name — do not change if using docker-compose)*
-   - `BridgePort` = `9000`
-   - `TimerIntervalMs` = `50`
-7. Enable **Allow DLL imports** and **Allow live trading**, then click OK
-8. The EA journal tab should show: `MT5Bridge: connected to bridge:9000`
+2. **Tools → Options → Expert Advisors**
+3. Tick ☑ **Allow WebRequest for listed URL**
+4. Click **Add** and enter exactly: `http://172.28.0.10:9000`
+5. Click **OK**
+
+The bridge container is pinned to `172.28.0.10` in `docker-compose.yaml`, so this URL is stable across restarts.
 
 ---
 
-### 4. Verify
+### 4. Install and configure the EA
+
+1. In the MT5 terminal go to **File → Open Data Folder → MQL5 → Experts → MT5Bridge**
+   - The `MT5Bridge.mq5` file is already mounted there via the volume
+2. In MetaEditor, open `MT5Bridge.mq5` and press **F7** to compile
+3. Back in the MT5 terminal, open any chart (e.g. EURUSD, M1)
+4. Drag **MT5Bridge** from the Navigator panel onto the chart
+5. In the EA settings dialog leave defaults (or override):
+   - `BridgeHost` = `172.28.0.10` *(matches the static IP in docker-compose.yaml)*
+   - `BridgePort` = `9000`
+   - `TimerIntervalMs` = `50`
+6. Enable **Allow DLL imports** and **Allow live trading**, then click OK
+7. The EA journal tab should show: `MT5Bridge: connected to 172.28.0.10:9000`
+
+---
+
+### 5. Verify
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:18080/health
 ```
 
 Expected:
@@ -502,17 +521,17 @@ Expected:
 
 ---
 
-### 5. Quick smoke test
+### 6. Quick smoke test
 
 ```bash
 # Account info
-curl http://localhost:8080/account
+curl http://localhost:18080/account
 
 # Open positions
-curl http://localhost:8080/positions
+curl http://localhost:18080/positions
 
 # Place a market buy (demo account only — real money is real)
-curl -X POST http://localhost:8080/orders \
+curl -X POST http://localhost:18080/orders \
   -H "Content-Type: application/json" \
   -d '{"symbol":"EURUSD","type":0,"volume":0.01,"sl":0,"tp":0,"comment":"test"}'
 ```
@@ -544,12 +563,21 @@ docker compose down -v
 
 ### Port reference
 
-| Port | Exposed to host | Purpose |
-|------|-----------------|---------|
+| Container port | Host binding | Purpose |
+|----------------|--------------|---------|
 | `3000` | `127.0.0.1:3000` | MT5 VNC web UI |
 | `8001` | `127.0.0.1:8001` | mt5linux rpyc (internal, legacy) |
-| `8080` | `127.0.0.1:8080` | Bridge REST API |
-| `9000` | Internal only | EA → bridge TCP connection |
+| `8080` | `127.0.0.1:18080` | Bridge REST API |
+| `9000` | none — Docker network only | EA → bridge TCP connection |
+
+### Network reference
+
+The `mt5_net` Docker network uses subnet `172.28.0.0/24` with static IPs:
+
+| Container | Static IP |
+|-----------|-----------|
+| `mt5_bridge` | `172.28.0.10` |
+| `mt5` | `172.28.0.20` |
 
 ---
 
@@ -557,8 +585,10 @@ docker compose down -v
 
 | Symptom | Fix |
 |---------|-----|
-| `/health` returns `"EA not connected"` | Check EA is attached to a chart and compiled; check journal for connection errors |
+| `/health` returns `"EA not connected"` but EA is attached and no error in journal | The bridge URL is not in the **Allow WebRequest for listed URL** list. `SocketConnect()` fails silently when blocked. Add `http://172.28.0.10:9000` in **Tools → Options → Expert Advisors**. |
 | EA journal shows connection refused | Bridge container may not be running — `docker compose ps bridge` |
+| EA journal shows `connected to <hostname>` then immediately disconnects | Bridge accepted the TCP connection but the URL is missing from MT5's allowlist — same fix as above |
+| Bridge container has a different IP than `172.28.0.10` | The `mt5_net` network already existed with a different subnet. Run `docker compose down && docker network rm mt5_net && docker compose up -d`. |
 | `retcode 10018` on place order | Market is closed (weekend / holiday) |
 | `retcode 10016` on place order | SL/TP are too close to current price — check broker's minimum stop level |
 | Build fails in Docker | Ensure Docker has at least 2 GB RAM available for the Drogon compile |

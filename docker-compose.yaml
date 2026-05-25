@@ -1,6 +1,9 @@
 networks:
   mt5_net:
     name: mt5_net
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
 
 services:
   mt5:
@@ -17,7 +20,8 @@ services:
     env_file:
       - .env
     networks:
-      - mt5_net
+      mt5_net:
+        ipv4_address: 172.28.0.20
     deploy:
       resources:
         limits:
@@ -40,7 +44,8 @@ services:
       - MT5_TCP_PORT=9000
       - HTTP_PORT=8080
     networks:
-      - mt5_net
+      mt5_net:
+        ipv4_address: 172.28.0.10
     restart: unless-stopped
     deploy:
       resources:
