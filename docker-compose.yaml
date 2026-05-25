@@ -10,7 +10,7 @@ services:
     volumes:
       - ./config:/config
       - ./Metatrader/start.sh:/Metatrader/start.sh:ro
-      - ./Metatrader/experts:/config/.wine/drive_c/Program Files/MetaTrader 5/MQL5/Experts/MT5Bridge:ro
+      - ./Metatrader/experts:/config/.wine/drive_c/Program Files/MetaTrader 5/MQL5/Experts/MT5Bridge
     ports:
       - 127.0.0.1:3000:3000
       - 127.0.0.1:8001:8001

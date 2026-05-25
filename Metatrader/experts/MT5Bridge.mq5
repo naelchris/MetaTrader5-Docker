@@ -139,7 +139,7 @@ string AccountInfo()
     s += "\"balance\":"       + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2)      + ",";
     s += "\"equity\":"        + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2)       + ",";
     s += "\"margin\":"        + DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN), 2)       + ",";
-    s += "\"free_margin\":"   + DoubleToString(AccountInfoDouble(ACCOUNT_FREEMARGIN), 2)   + ",";
+    s += "\"free_margin\":"   + DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE), 2)  + ",";
     s += "\"profit\":"        + DoubleToString(AccountInfoDouble(ACCOUNT_PROFIT), 2)       + ",";
     s += "\"leverage\":"      + IntegerToString(AccountInfoInteger(ACCOUNT_LEVERAGE))      + ",";
     s += "\"trade_allowed\":" + (AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) ? "true" : "false");
