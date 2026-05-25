@@ -9,6 +9,7 @@ services:
     volumes:
       - ./config:/config
       - ./Metatrader/start.sh:/Metatrader/start.sh:ro
+      - ./Metatrader/experts:/config/.wine/drive_c/Program Files/MetaTrader 5/MQL5/Experts/MT5Bridge:ro
     ports:
       - 127.0.0.1:3000:3000
       - 127.0.0.1:8001:8001
@@ -24,4 +25,23 @@ services:
         reservations:
           cpus: '0.5'
           memory: 1G
+
+  bridge:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    container_name: mt5_bridge
+    ports:
+      - 127.0.0.1:8080:8080
+    environment:
+      - MT5_TCP_PORT=9000
+      - HTTP_PORT=8080
+    networks:
+      - mt5_net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
