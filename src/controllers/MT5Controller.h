@@ -104,7 +104,7 @@ inline void MT5Controller::closePosition(const HttpRequestPtr&,
                                           std::string ticket)
 {
     Json::Value params;
-    params["ticket"] = std::stoll(ticket);
+    params["ticket"] = static_cast<Json::Value::Int64>(std::stoll(ticket));
     cb(reply(MT5Client::instance().send("close_position", params)));
 }
 
@@ -152,7 +152,7 @@ inline void MT5Controller::cancelOrder(const HttpRequestPtr&,
                                         std::string ticket)
 {
     Json::Value params;
-    params["ticket"] = std::stoll(ticket);
+    params["ticket"] = static_cast<Json::Value::Int64>(std::stoll(ticket));
     cb(reply(MT5Client::instance().send("cancel_order", params)));
 }
 
@@ -160,8 +160,8 @@ inline void MT5Controller::orderHistory(const HttpRequestPtr& req,
                                          std::function<void(const HttpResponsePtr&)>&& cb)
 {
     Json::Value params;
-    params["from"] = std::stoll(req->getParameter("from").empty() ? "0" : req->getParameter("from"));
-    params["to"]   = std::stoll(req->getParameter("to").empty()   ? "0" : req->getParameter("to"));
+    params["from"] = static_cast<Json::Value::Int64>(std::stoll(req->getParameter("from").empty() ? "0" : req->getParameter("from")));
+    params["to"]   = static_cast<Json::Value::Int64>(std::stoll(req->getParameter("to").empty()   ? "0" : req->getParameter("to")));
     cb(reply(MT5Client::instance().send("order_history", params)));
 }
 
@@ -169,7 +169,7 @@ inline void MT5Controller::dealHistory(const HttpRequestPtr& req,
                                         std::function<void(const HttpResponsePtr&)>&& cb)
 {
     Json::Value params;
-    params["from"] = std::stoll(req->getParameter("from").empty() ? "0" : req->getParameter("from"));
-    params["to"]   = std::stoll(req->getParameter("to").empty()   ? "0" : req->getParameter("to"));
+    params["from"] = static_cast<Json::Value::Int64>(std::stoll(req->getParameter("from").empty() ? "0" : req->getParameter("from")));
+    params["to"]   = static_cast<Json::Value::Int64>(std::stoll(req->getParameter("to").empty()   ? "0" : req->getParameter("to")));
     cb(reply(MT5Client::instance().send("deal_history", params)));
 }

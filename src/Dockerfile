@@ -7,7 +7,12 @@ COPY . .
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build -j"$(nproc)"
 
-# Stage 2 — runtime
+# Collect the exact set of shared libs the binary needs
+RUN ldd /app/build/mt5_bridge \
+    | awk '/=>/{print $3}' \
+    | xargs -I{} cp --parents {} /app/libs/ 2>/dev/null || true
+
+# Stage 2 — slim runtime with only what ldd says is needed
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -19,6 +24,10 @@ RUN apt-get update \
         libc-ares2 \
         libuuid1 \
         zlib1g \
+        libpq5 \
+        libsqlite3-0 \
+        libmariadb3 \
+        libhiredis0.14 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/build/mt5_bridge /usr/local/bin/mt5_bridge

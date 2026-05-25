@@ -19,11 +19,11 @@ int main()
         return 1;
     }
 
+    // MT5Controller auto-registers via HttpController<> static initialisation
     drogon::app()
         .setLogLevel(trantor::Logger::kInfo)
         .addListener("0.0.0.0", httpPort)
         .setThreadNum(4)
-        .registerController(std::make_shared<MT5Controller>())
         .run();
 
     MT5Client::instance().stop();

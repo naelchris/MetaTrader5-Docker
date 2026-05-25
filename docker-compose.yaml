@@ -5,6 +5,7 @@ networks:
 services:
   mt5:
     image: gmag11/metatrader5_vnc:latest
+    platform: linux/amd64
     container_name: mt5
     volumes:
       - ./config:/config
@@ -30,6 +31,8 @@ services:
     build:
       context: ./src
       dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
     container_name: mt5_bridge
     ports:
       - 127.0.0.1:8080:8080

@@ -41,6 +41,14 @@ is_wine_python_package_installed() {
 check_dependency "curl"
 check_dependency "$wine_executable"
 
+# Initialize Wine prefix if kernel32.dll is missing (first run or corrupted prefix)
+if [ ! -f "$WINEPREFIX/drive_c/windows/system32/kernel32.dll" ]; then
+    show_message "[0/7] Initializing Wine prefix (first run)..."
+    wineboot --init
+    wineserver --wait
+    show_message "[0/7] Wine prefix ready."
+fi
+
 # Install Mono if not present
 if [ ! -e "/config/.wine/drive_c/windows/mono" ]; then
     show_message "[1/7] Downloading and installing Mono..."
